@@ -119,6 +119,10 @@
           }
         }
       }
-    }},
-  "defaultProject": "PeopleAI-Interface"
+    }
+  },
+  "defaultProject": "PeopleAI-Interface",
+  "cli": {
+    "analytics": false
+  }
 }

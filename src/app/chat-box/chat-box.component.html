@@ -1,0 +1,41 @@
+<div class="chat-app-container">
+  <div class="chat-box-container">
+    <div class="chat-head" (click)="toggleChat()">
+      <img src="assets/optimus.png" alt="optimus" class="robot-icon" /> PeopleAI
+    </div>
+    <div class="chat-body" id="chat-body" *ngIf="IsChatActive">
+
+      <div class="chat-message" *ngFor="let chat of ChatList">
+
+        <div *ngIf="chat.sender != null" class="user-message">
+          {{chat.message}}
+        </div>
+
+          <img src="assets/optimus.png" alt="optimus" class="robot-icon-small" *ngIf="chat.sender == null"  />
+
+
+          <div class="bot-message" *ngIf="chat.sender == null  && chat.text === 'Typig...'">
+            <div class="stage">
+              <div class="dot-flashing" ></div>
+          </div>
+
+           </div>
+        <div class="bot-message" *ngIf="chat.sender == null && chat.text !== 'Typig...'">
+            {{chat.text}}
+         </div>
+        <div *ngIf="chat.buttons != null && chat.buttons.length > 0">
+          <button *ngFor="let button of chat.buttons" (click)="onButtonClick(button.payload)">
+            {{button.title}}
+          </button>
+        </div>
+
+      </div>
+    </div>
+    <div class="chat-input-box" *ngIf="IsChatActive">
+      <input type="text" placeholder="Enter text here"  class="chat-input"
+      [(ngModel)]="chatInputValue" (keyup.enter)="SendMessage()"  />
+      <img class="send-button" src="assets/send.png" alt="send" (onclick)="SendMessage()"/>
+
+    </div>
+  </div>
+</div>
