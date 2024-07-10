@@ -1,16 +1,14 @@
 import { BrowserModule } from '@angular/platform-browser';
-import { NgModule } from '@angular/core';
+import { Injector, NgModule } from '@angular/core';
 
 import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
-import { ChatBoxComponent } from './chat-box/chat-box.component';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule} from   '@angular/common/http'
-
+import { createCustomElement } from '@angular/elements';
+import { ChatBotComponent } from './chat-bot/chat-bot.component';
 @NgModule({
   declarations: [
-    AppComponent,
-    ChatBoxComponent
+    ChatBotComponent
   ],
   imports: [
     BrowserModule,
@@ -19,6 +17,14 @@ import { HttpClientModule} from   '@angular/common/http'
     HttpClientModule
   ],
   providers: [],
-  bootstrap: [AppComponent]
+  entryComponents: [ChatBotComponent]
 })
-export class AppModule { }
+export class AppModule {
+
+    constructor(injector : Injector) {
+      const chatBot = createCustomElement(ChatBotComponent, {injector});
+      customElements.define('ai-chat-bot', chatBot);
+    }
+
+    ngDoBootstrap() {}
+}

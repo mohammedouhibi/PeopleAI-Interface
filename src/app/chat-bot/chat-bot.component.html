@@ -1,0 +1,81 @@
+<div class="chatbox-component-container">
+  <div class="chatbot-button" (click)="toggleChatbox()" (mouseenter)="showPopup()" (mouseleave)="hidePopup()">
+    <img src="https://client.peopleask.io:8089/chatbot.png.svg" alt="chatbot" class="chatbot-button-icon"
+      *ngIf="!isChatboxActive" />
+    <img src="https://client.peopleask.io:8089/chatbox-close-big.svg" alt="close" class="chatbot-close-icon-big"
+      *ngIf="isChatboxActive" />
+  </div>
+
+  <div class="chatbot-popup-container" *ngIf="!isChatboxActive">
+    <div class="chatbot-popup">
+      <div class="chatbot-popup-content">
+        <img src="https://client.peopleask.io:8089/question-mark.svg" alt="chatbot" class="chatbot-popup-icon" />
+        Une question ? Besoin d’aide ?
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="isChatboxActive" [ngClass]="isExtended ? 'chatbox-extended' : 'chatbox'">
+    <div class="chatbox-header">
+      <div class="chatbot-header-content ">
+        <div class="chatbot-icon-container">
+          <img src="https://client.peopleask.io:8089/chatbot.png.svg" alt="chatbot" class="chatbot-icon" />
+        </div>
+        <div class="chatbot-header-text">PeopleASK</div>
+      </div>
+      <div class="chatbox-header-buttons-container ">
+        <div class="chatbox-button" (click)="toggleExtended()">
+          <img src="https://client.peopleask.io:8089/chatbox-expand.svg" alt="expand" class="chatbox-expand-icon"
+            *ngIf="!isExtended" />
+          <img src="https://client.peopleask.io:8089/chatbox-contract.svg" alt="contract" class="chatbox-expand-icon"
+            *ngIf="isExtended" />
+        </div>
+        <div class="chatbox-button" (click)="toggleChatbox()">
+          <img src="https://client.peopleask.io:8089/chatbox-collapse.svg" alt="collapse"
+            class="chatbox-collapse-icon" />
+        </div>
+        <div class="chatbox-button" (click)="resetChatbox()">
+          <img src="https://client.peopleask.io:8089/chatbox-close.svg" alt="close" class="chatbox-close-icon" />
+        </div>
+      </div>
+    </div>
+    <div class="chatbox-body">
+      <div class="chatbox-scroll" (click)="scrollChatToBottom()" *ngIf="!isScrolledToBottom">
+        <img src="https://client.peopleask.io:8089/chatbox-scroll.svg" alt="scroll" class="chatbox-scroll-icon" />
+      </div>
+      <div class="chatbox-messages-container" id="chat-body" (scroll)="onScroll()">
+
+
+        <div *ngFor="let chat of ChatList, let last=last" class="chatbox-message ">
+          <div class="chatbox-user-message" *ngIf="chat.sender != null">
+            <img src="{{ProfilePicture}}" alt="Profile" class="chatbox-user-image">
+            <div class="chatbox-user-text">{{chat.message}}</div>
+          </div>
+          <div class="chatbox-bot-message" *ngIf="chat.text != null ">
+            <div class="chatbot-icon-container-small">
+              <img src="https://client.peopleask.io:8089/chatbot.png.svg" alt="chatbot" class="chatbot-icon-small" />
+            </div>
+            <div class="chatbox-bot-text">
+              {{chat.text}}
+              <span class="typing-span" *ngIf="botTypingAnimation && last">
+                <div class="chatbot-generating-stage">
+                  <div class="chatbot-generating-animation"></div>
+                </div>
+              </span>
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+      <div class="chatbox-footer">
+        <input class="chatbox-input" type="text" placeholder="Saisir" #chatInput [(ngModel)]="chatInputValue"
+          (keyup.enter)="SendMessage()" />
+        <div class="chatbot-send-button" (click)="SendMessage()">
+          <img src="https://client.peopleask.io:8089/chatbot-send.svg" alt="send" class="chatbot-send-icon " />
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
