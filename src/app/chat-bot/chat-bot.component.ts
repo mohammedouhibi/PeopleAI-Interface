@@ -1,5 +1,6 @@
 import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
 import { ChatbotService } from '../chatbot.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 
 type UserMessage = {
@@ -65,16 +66,22 @@ export class ChatBotComponent implements OnInit {
 
   @Input() ProfilePicture: string = "https://client.peopleask.io:8089/DEFAULT_PROFILE_PICTURE_webp.png";
 
+  @Input() kctoken: string = "";
+  @Input() serverurl: string = "https://peopleask-server-tn.peopleyou.io:8089";
+
+
   constructor(
     private chatService: ChatbotService,
+    private http: HttpClient,
   ) {
+
   }
 
 
   handleDiffusionEnd(data) {
     let lastChatEntry : BotResponse = (this.ChatList[this.ChatList.length - 1] as BotResponse);
     if (lastChatEntry.text.length === 0) {
-      lastChatEntry.text = "un problème s'est produit, merci de réessayer";
+      lastChatEntry.text = "Un problème s'est produit, merci de réessayer.";
       (this.ChatList[this.ChatList.length - 1] as BotResponse).text = lastChatEntry.text;
     }
     this.LLMUtterFlag = false;
@@ -96,7 +103,7 @@ export class ChatBotComponent implements OnInit {
         var lasEntryIndex = this.ChatList.length - 1;
         setTimeout(() => {
           (this.ChatList[lasEntryIndex] as BotResponse).text
-            = "Je suis désolé mais je ne peux pas repondre à cette question. Merci de reprendre votre question. ";
+            = "Un problème s'est produit, merci de réessayer.";
 
           this.handleDiffusionEnd("");
         }
@@ -308,7 +315,35 @@ export class ChatBotComponent implements OnInit {
 
 
 
-getChatHistory(){
+  getChatHistory() {
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    if (this.kctoken !== "") {
+      headers = headers.set('Authorization', 'Bearer ' + this.kctoken);
+    }
+
+    this.http.post<any>(`${this.serverurl}/getChatHistory`, { user: this.user },  { headers : headers})
+    .subscribe({
+      next: (data) => {
+        let newChatHistory: PeopleAIChat[] = this.ChatList;
+        data.messages.forEach((message) => {
+          if (message.sender === "user") {
+            newChatHistory.push({ sender: this.user, message: message.text });
+          } else if (message.sender === "bot") {
+            newChatHistory.push({ recipient_id: this.user, text: message.text });
+          }
+        });
+        this.ChatList = newChatHistory;
+      },
+      error: (error) => {
+        console.error('Error fetching chat history:', error);
+      }
+    });
+  }
+
+/*getChatHistory(){
   fetch('https://peopleask-server-tn.peopleyou.io:8089/getChatHistory',
     {
       method: 'POST',
@@ -341,47 +376,42 @@ getChatHistory(){
     })
   })
 
-}
+}*/
 
-clearChatHistory(){
-  fetch('https://peopleask-server-tn.peopleyou.io:8089/clearChatHistory',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        user: this.user
-      })
-    }
-  ).then((response) => {
-    response.json().then((data) => {
-        this.ChatList = [];
-      }).catch((err) => {
-        console.error(err);
-      })
-    })
+clearChatHistory() {
+  let headers = new HttpHeaders({
+    'Content-Type': 'application/json'
+  });
 
-}
-
-  ngOnInit(): void {
-    this.chatService.setupSocketConnection(this.handleRasaResponse.bind(this),
-      this.handleLLMresponse.bind(this), this.handleDiffusionEnd.bind(this));
-    this.getChatHistory();
-
-
+  if (this.kctoken !== "") {
+    headers = headers.set('Authorization', 'Bearer ' + this.kctoken);
   }
 
+  this.http.post<any>(`${this.serverurl}/clearChatHistory`, { user: this.user }, { headers : headers }).subscribe({
+    next: (data) => {
+      this.ChatList = [];
+    },
+    error: (error) => {
+      console.error('Error clearing chat history:', error);
+    }
+  });
+}
 
 
-  SendMessage() {
+
+ngOnInit(): void {
+    console.log("token : " + this.kctoken);
+    this.chatService.setupSocketConnection(this.kctoken, this.serverurl, this.handleRasaResponse.bind(this),
+    this.handleLLMresponse.bind(this), this.handleDiffusionEnd.bind(this));
+    this.getChatHistory();
+  }
+
+SendMessage() {
     if (this.chatInputValue != "" && !this.botTyping) {
       this.botTyping = true;
       let newMessage: PeopleAIChat = {
-
         message: this.chatInputValue,
         sender: this.user
-
       }
       this.ChatList.push(newMessage);
       this.chatInputValue = "";
@@ -391,15 +421,10 @@ clearChatHistory(){
       }
 
       this.ChatList.push(botChat);
-
-
       this.scrollChatToBottom();
       this.botTypingAnimation = true;
       this.chatService.sendUserMessage(newMessage)
       this.setResponseTimeout(10000);
     }
   }
-
-
-
 }

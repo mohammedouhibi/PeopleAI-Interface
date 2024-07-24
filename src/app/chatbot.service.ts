@@ -27,27 +27,39 @@ interface ClientToServerEvents {
   providedIn: 'root'
 })
 export class ChatbotService implements OnDestroy {
-  private socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("https://peopleask-server-tn.peopleyou.io:8089");
+  private socket: Socket<ServerToClientEvents, ClientToServerEvents>;
   sessionHash: string = null;
   sessionDisconnectFlag = false;
   constructor() {
-    this.setupSocketConnection(
-      (data) => this.handleRasaMessage(data),
-      (data) => this.handleLLMMessage(data),
-      (data) => this.handleDiffusionEnd(data)
-    );
   }
 
   setupSocketConnection(
+    token: string,
+    serverURL: string,
     rasaCallback: Handler,
     llmCallback: Handler,
     diffusionEndCallback: Handler
   ) {
     try {
 
+      const options = {
+        //transport set to polling
+        transports: ['polling'],
+        transportOptions: {
+          polling: {
+            extraHeaders: {
+              Authorization: token
+            }
+          }
+        }
+      };
+     if (token && token.trim() !== '')
+      this.socket = io(serverURL, options);
+      else
+      this.socket = io(serverURL);
       this.socket.on("connect", () => {
         console.log("connected");
-        if (this.sessionDisconnectFlag) {
+        if (this.sessionDisconnectFlag && this.sessionHash) {
           console.log("reconnecting")
           this.socket.emit('handle_reconnect', { hash: this.sessionHash });
         }
@@ -68,7 +80,6 @@ export class ChatbotService implements OnDestroy {
         } catch (err) {
           console.log(err);
         }
-
       });
 
       this.socket.on("llm_uttered", (data) => {
