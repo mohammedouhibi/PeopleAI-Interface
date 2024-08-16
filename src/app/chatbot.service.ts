@@ -16,8 +16,7 @@ interface ServerToClientEvents {
 interface ClientToServerEvents {
   hello: () => void;
   user_uttered: (data: any) => void;
-  handle_reconnect: (data: any) => void;
-  registration: () => void;
+  registration: (data: any) => void;
 
 }
 
@@ -28,7 +27,7 @@ interface ClientToServerEvents {
 })
 export class ChatbotService implements OnDestroy {
   private socket: Socket<ServerToClientEvents, ClientToServerEvents>;
-  sessionHash: string = null;
+  sessionHash: string = localStorage.getItem("sessionHash") || null;
   sessionDisconnectFlag = false;
   constructor() {
   }
@@ -42,7 +41,9 @@ export class ChatbotService implements OnDestroy {
   ) {
     try {
 
-      const options = {
+      let options = {};
+     if (token && token.trim() !== '')
+      options = {
         //transport set to polling
         transports: ['polling'],
         transportOptions: {
@@ -53,20 +54,17 @@ export class ChatbotService implements OnDestroy {
           }
         }
       };
-     if (token && token.trim() !== '')
-      this.socket = io(serverURL, options);
       else
-      this.socket = io(serverURL);
+      options = {
+        //transport set to polling
+        transports: ['polling']
+      };
+      this.socket = io(serverURL, options);
       this.socket.on("connect", () => {
         console.log("connected");
-        if (this.sessionDisconnectFlag && this.sessionHash) {
-          console.log("reconnecting")
-          this.socket.emit('handle_reconnect', { hash: this.sessionHash });
-        }
-        else {
-          console.log("registering")
-          this.socket.emit('registration');
-        }
+          console.log("registering : "+ this.sessionHash)
+          this.socket.emit('registration', { hash: this.sessionHash , HTTP_AUTHORIZATION: token});
+
       });
 
       this.socket.on("connect_error", (err) => {
@@ -92,6 +90,7 @@ export class ChatbotService implements OnDestroy {
 
       this.socket.on("registered", (data) => {
         console.log("registered with hash : ",data);
+        localStorage.setItem("sessionHash", data);
         this.sessionHash = data;
       })
 
@@ -109,12 +108,12 @@ export class ChatbotService implements OnDestroy {
     }
   }
 
-  sendUserMessage(message: any) {
+  sendUserMessage(data: any) {
     if (this.sessionHash) {
-      message.hash = this.sessionHash;
+      data.hash = this.sessionHash;
     }
-    this.socket.emit('user_uttered', message);
-    console.log("user uttered : " + JSON.stringify(message))
+    this.socket.emit('user_uttered', data);
+    console.log("user uttered : " + JSON.stringify(data))
   }
 
   handleRasaMessage(data: any) {

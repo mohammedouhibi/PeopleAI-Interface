@@ -34,7 +34,6 @@
           <img src="https://client.peopleask.io:8089/chatbox-close.svg" alt="close"
             class="chatbox-collapse-icon" />
         </div>
-
       </div>
     </div>
     <div class="chatbox-body">
@@ -46,7 +45,7 @@
 
         <div *ngFor="let chat of ChatList, let last=last" class="chatbox-message ">
           <div class="chatbox-user-message" *ngIf="chat.sender != null">
-            <img src="{{ProfilePicture}}" alt="Profile" class="chatbox-user-image">
+            <img [src]="ProfilePicture" alt="Profile" class="chatbox-user-image">
             <div class="chatbox-user-text">{{chat.message}}</div>
           </div>
           <div class="chatbox-bot-message" *ngIf="chat.text != null ">

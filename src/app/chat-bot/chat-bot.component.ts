@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, Input, OnInit, ViewChild, AfterViewChecked  } from '@angular/core';
 import { ChatbotService } from '../chatbot.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 
@@ -27,11 +27,15 @@ type PeopleAIChat = UserMessage | BotResponse
   templateUrl: './chat-bot.component.html',
   styleUrls: ['./chat-bot.component.css']
 })
-export class ChatBotComponent implements OnInit {
-
+export class ChatBotComponent implements OnInit, AfterViewChecked  {
   @ViewChild('chatInput') chatElement: ElementRef;
+  @ViewChild('chatBody') chatBodyElement: ElementRef;
 
+  private isLoadingHistory = false;
 
+  private lastScrollHeight = 0;
+
+  private lastScrollTop = 0;
 
   //these variables are to remain static.
   chatInputValue = "";
@@ -53,6 +57,8 @@ export class ChatBotComponent implements OnInit {
   isExtended = false;
 
   responseTimeout: any = null;
+
+  lastMessageId:string = null;
 
   //these variables are to be implemented as component properties
   @Input() user: string = "guest"; //can be anything unique to each user (like a permanent token or ID)
@@ -131,10 +137,37 @@ export class ChatBotComponent implements OnInit {
     }
   }
 
+  ngAfterViewChecked() {
+    this.maintainScrollPosition();
+  }
+
   onScroll() {
-    const chatBody = document.getElementById('chat-body');
-    this.isScrolledToBottom =
-      Math.abs(chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight) < 5;
+    const chatBody = this.chatBodyElement.nativeElement;
+    this.isScrolledToBottom = Math.abs(chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight) < 5;
+
+    // Check if scrolled to top and not already loading history
+    if (chatBody.scrollTop === 0 && !this.isLoadingHistory) {
+      this.loadMoreHistory();
+    }
+  }
+
+  loadMoreHistory() {
+    this.isLoadingHistory = true;
+    this.lastScrollHeight = this.chatBodyElement.nativeElement.scrollHeight;
+    this.lastScrollTop = this.chatBodyElement.nativeElement.scrollTop;
+
+    this.getBatchedChatHistory();
+  }
+
+  maintainScrollPosition() {
+    if (this.isLoadingHistory) {
+      const chatBody = this.chatBodyElement.nativeElement;
+      const newScrollHeight = chatBody.scrollHeight;
+      const heightDifference = newScrollHeight - this.lastScrollHeight;
+
+      chatBody.scrollTop = this.lastScrollTop + heightDifference;
+      this.isLoadingHistory = false;
+    }
   }
 
   sayHi() {
@@ -324,7 +357,7 @@ export class ChatBotComponent implements OnInit {
       headers = headers.set('Authorization', 'Bearer ' + this.kctoken);
     }
 
-    this.http.post<any>(`${this.serverurl}/getChatHistory`, { user: this.user },  { headers : headers})
+    this.http.post<any>(`${this.serverurl}/getChatHistory`, { user: this.user , hash : localStorage.getItem("sessionHash")},  { headers : headers})
     .subscribe({
       next: (data) => {
         let newChatHistory: PeopleAIChat[] = this.ChatList;
@@ -342,6 +375,48 @@ export class ChatBotComponent implements OnInit {
       }
     });
   }
+
+  getBatchedChatHistory() {
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    if (this.kctoken !== "") {
+      headers = headers.set('Authorization', 'Bearer ' + this.kctoken);
+    }
+
+    const body = {
+      hash: localStorage.getItem("sessionHash"),
+      lastMessageId: this.lastMessageId,
+      batchSize: 20
+    };
+
+    this.http.post<any>(`${this.serverurl}/api/chat/history/batch`, body, { headers: headers })
+      .subscribe({
+        next: (data) => {
+          let newChatHistory: PeopleAIChat[] = [];
+          data.messages.forEach((message) => {
+            if (message.sender === "user") {
+              newChatHistory.push({ sender: this.user, message: message.text });
+            } else if (message.sender === "bot") {
+              newChatHistory.push({ recipient_id: this.user, text: message.text });
+            }
+          });
+
+          // Prepend new messages to the existing chat list
+          this.ChatList = [...newChatHistory, ...this.ChatList];
+          this.lastMessageId = data.last_message_id;
+
+          // Maintain scroll position after loading new messages
+          this.maintainScrollPosition();
+        },
+        error: (error) => {
+          console.error('Error fetching batched chat history:', error);
+          this.isLoadingHistory = false;
+        }
+      });
+  }
+
 
 /*getChatHistory(){
   fetch('https://peopleask-server-tn.peopleyou.io:8089/getChatHistory',
