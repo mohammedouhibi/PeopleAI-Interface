@@ -37,7 +37,8 @@ export class ChatbotService implements OnDestroy {
     serverURL: string,
     rasaCallback: Handler,
     llmCallback: Handler,
-    diffusionEndCallback: Handler
+    diffusionEndCallback: Handler,
+    onConnect: () => void
   ) {
     try {
 
@@ -61,6 +62,7 @@ export class ChatbotService implements OnDestroy {
       };
       this.socket = io(serverURL, options);
       this.socket.on("connect", () => {
+        onConnect();
         console.log("connected");
           console.log("registering : "+ this.sessionHash)
           this.socket.emit('registration', { hash: this.sessionHash , HTTP_AUTHORIZATION: token});
